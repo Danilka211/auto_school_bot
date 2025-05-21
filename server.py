@@ -6,6 +6,7 @@ from typing import List
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
+import pathlib
 import json
 import os
 
@@ -23,17 +24,18 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+
 cars = [
     {"id": 1, "model": "Toyota Corolla", "description": "Удобный и экономичный седан. Простой в обслуживании, надёжный на любых дорогах.",
-     "photo_url": "http://127.0.0.1:8000/static/toyota.webp", "available": True},
+     "photo_url": "/static/toyota.webp", "available": True},
     {"id": 2, "model": "BMW 3 Series", "description": "Спортивный и стильный седан. Отличается динамичным управлением и высоким комфортом.",
-     "photo_url": "http://127.0.0.1:8000/static/bmw.webp", "available": True},
+     "photo_url": "/static/bmw.webp", "available": True},
     {"id": 3, "model": "Volkswagen Polo", "description": "Немецкое качество. Устойчив на дороге и прост в обслуживании.",
-    "photo_url": "http://127.0.0.1:8000/static/polo.webp", "available": True},
+    "photo_url": "/static/polo.webp", "available": True},
     {"id": 4, "model": "Hyundai Solaris", "description": "Популярный учебный авто. Комфортный и манёвренный.",
-    "photo_url": "http://127.0.0.1:8000/static/solaris.jpg", "available": True},
+    "photo_url": "/static/solaris.jpg", "available": True},
     {"id": 5, "model": "Kia Rio", "description": "Надёжный и экономичный седан. Лёгок в управлении.",
-    "photo_url": "http://127.0.0.1:8000/static/kio.jpg", "available": True}
+    "photo_url": "/static/kio.jpg", "available": True}
 ]
 
 bookings = []
@@ -76,9 +78,12 @@ def get_holidays():
     return HOLIDAYS
 
 
+BASE_DIR = pathlib.Path(__file__).parent.resolve()
+
 @app.get("/")
 async def get_index():
-    with open("frontend/index.html", "r", encoding="utf-8") as f:
+    index_path = BASE_DIR / "frontend" / "index.html"
+    with open(index_path, "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read(), status_code=200)
 
 @app.get("/cars")

@@ -2569,7 +2569,7 @@ async def cmd_start(message: types.Message):
     markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
             text="Открыть Mini App",
-            web_app=WebAppInfo(url="https://lazy-sites-guess.loca.lt")
+            web_app=WebAppInfo(url="https://auto-school-bot-mkxv.onrender.com")
         )]
     ])
     await message.answer("Добро пожаловать! Открой Mini App:", reply_markup=markup)
