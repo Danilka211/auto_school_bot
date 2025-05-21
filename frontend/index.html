@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Бронирование машин</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+    :root {
+        --bg-color: #121212;
+        --card-bg: #1e1e1e;
+        --text-color: #e0e0e0;
+        --accent-color: #4caf50;
+        --accent-hover: #388e3c;
+        --cancel-color: #e53935;
+        --cancel-hover: #b71c1c;
+        --border-color: #333;
+        --shadow-color: rgba(0, 0, 0, 0.7);
+        --available-slot: #2e7d32;
+        --unavailable-slot: #c62828;
+        --slot-hover: #455a64;
+    }
+
+    html.light {
+        --bg-color: #f5f5f5;
+        --card-bg: #ffffff;
+        --text-color: #1c1c1c;
+        --accent-color: #2196f3;
+        --accent-hover: #1976d2;
+        --cancel-color: #e53935;
+        --cancel-hover: #b71c1c;
+        --border-color: #ccc;
+        --shadow-color: rgba(0, 0, 0, 0.1);
+        --available-slot: #4caf50;
+        --unavailable-slot: #f44336;
+        --slot-hover: #cfd8dc;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        padding: 15px 10px;
+        font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        min-height: 100vh;
+        transition: background-color 0.3s ease;
+    }
+
+    h2 {
+        font-weight: 600;
+        margin-bottom: 15px;
+        border-bottom: 2px solid var(--accent-color);
+        padding-bottom: 5px;
+        user-select: none;
+        font-size: 24px;
+    }
+
+    .card {
+        background-color: var(--card-bg);
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 3px 8px var(--shadow-color);
+        border: 1px solid var(--border-color);
+        animation: fadeInUp 0.5s ease forwards;
+        opacity: 0;
+    }
+
+    .card h3 {
+        margin-top: 0;
+        margin-bottom: 12px;
+        font-weight: 700;
+        color: var(--accent-color);
+        font-size: 20px;
+    }
+
+    .card img {
+        width: 100%;
+        border-radius: 12px;
+        margin-bottom: 15px;
+        object-fit: cover;
+        max-height: 180px;
+    }
+
+    .card p {
+        margin: 8px 0;
+        line-height: 1.5;
+        font-size: 15px;
+    }
+
+    label {
+        display: block;
+        margin-top: 10px;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    input[type="date"] {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        background-color: var(--card-bg);
+        color: var(--text-color);
+        font-size: 15px;
+        margin-bottom: 15px;
+    }
+
+    /* Стили для разных типов слотов */
+.time-slots {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px; /* Увеличили расстояние между слотами */
+  margin-top: 15px;
+}
+
+.saturday-info {
+  background: linear-gradient(135deg, #3a7bd5, #00d2ff) !important;
+  color: white !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  padding: 14px !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+  margin-bottom: 10px !important;
+}
+
+.time-slot {
+  padding: 12px 8px;
+  border-radius: 10px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  position: relative;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  min-height: 44px; /* Фиксированная высота */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden; /* Для градиентов и псевдоэлементов */
+}
+
+/* Убираем "слипание" при анимации */
+.time-slot:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 2; /* Поднимаем над соседями */
+}
+
+/* Специфичные стили для типов слотов */
+.time-slot.available {
+  background-color: var(--available-slot);
+  color: white;
+}
+
+.time-slot.unavailable {
+  background-color: var(--unavailable-slot);
+  color: white;
+}
+
+.time-slot.lunch-break {
+  background: linear-gradient(135deg, #e64d06, #e0950b);
+  color: white;
+}
+
+.time-slot.holiday {
+  background: linear-gradient(135deg, #ff416c, #ff4b2b);
+  color: white;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,0.3);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.16);
+}
+
+/* Иконки внутри слотов */
+.time-slot::after {
+  content: "";
+  position: absolute;
+  right: 8px;
+  opacity: 0.8;
+}
+
+.time-slot.available::after {
+  content: "✓";
+}
+
+.time-slot.unavailable::after {
+  content: "✗";
+}
+
+.time-slot.lunch-break::after {
+  content: "🍽";
+  right: 6px;
+}
+
+.time-slot.holiday::after {
+  content: "✖";
+  font-size: 18px;
+}
+
+.holiday-day {
+    background: linear-gradient(135deg, #ff5e62, #ff2400);
+    color: white;
+    font-weight: 600;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.3);
+    margin-bottom: 10px;
+}
+
+.saturday-short-day {
+    background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+    color: white;
+    font-weight: 600;
+}
+
+/* Подсказки */
+.time-slot[title]::before {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s, bottom 0.3s;
+  pointer-events: none;
+  z-index: 10;
+  font-weight: normal;
+}
+
+.time-slot[title]:hover::before {
+  opacity: 1;
+  bottom: 100%;
+}
+    button {
+        margin-top: 14px;
+        width: 100%;
+        padding: 12px;
+        font-size: 17px;
+        font-weight: 700;
+        color: white;
+        background-color: var(--accent-color);
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+        background-color: var(--accent-hover);
+    }
+
+    button:disabled {
+        background-color: #555;
+        cursor: not-allowed;
+    }
+
+    .cancel {
+        background-color: var(--cancel-color);
+    }
+
+    .cancel:hover {
+        background-color: var(--cancel-hover);
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 100;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.7);
+    }
+    
+    /* .modal-content {
+        background-color: var(--card-bg);
+        margin: 5% auto;
+        padding: 20px;
+        border-radius: 14px;
+        max-width: 500px;
+        width: 90%;
+        animation: fadeInUp 0.3s;
+    } */
+     .modal-content {
+    background-color: var(--card-bg);
+    margin: 20px auto;
+    padding: 20px;
+    border-radius: 14px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh; /* Ограничиваем высоту */
+    overflow-y: auto; /* Прокрутка внутри окна */
+    box-sizing: border-box;
+    position: relative;
+}
+
+#edit-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0,0,0,0.8);
+    z-index: 1000;
+    overflow-y: auto; /* Добавляем прокрутку */
+    padding: 20px 0;
+}
+
+#edit-car-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    margin: 0 auto;
+    display: block;
+    max-height: 200px; /* Фиксированная максимальная высота */
+    object-fit: contain;
+}
+
+    
+    /* .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    } */
+
+    .close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-color);
+}
+    
+    .close:hover {
+        color: var(--text-color);
+    }
+    
+    /* .modal-car-info {
+        text-align: center;
+        margin-bottom: 20px;
+    } */
+
+    #edit-time-slots-container {
+    max-height: 300px;
+    overflow-y: auto;
+    margin: 15px 0;
+    padding: 5px;
+}
+
+    .modal-car-info {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 10px;
+}
+    
+    .modal-car-info img {
+        max-height: 150px;
+        border-radius: 10px;
+    }
+    
+    #edit-car-select {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 8px;
+        background-color: var(--card-bg);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+    }
+    
+    .edit {
+        background-color: #ff9800;
+        margin-top: 10px;
+    }
+    
+    .edit:hover {
+        background-color: #f57c00;
+    }
+
+    button.edit {
+    background-color: #ff9800;
+    margin-top: 10px;
+}
+
+button.edit:hover {
+    background-color: #f57c00;
+}
+
+button.cancel {
+    margin-top: 10px;
+}
+
+/* Расположение кнопок рядом */
+.card button {
+    width: 48%;
+    display: inline-block;
+    margin-right: 4%;
+}
+
+.card button:last-child {
+    margin-right: 0;
+}
+
+.buttons-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.buttons-container button {
+    flex: 1;
+    margin-top: 0;
+}
+
+button.edit {
+    background-color: #ff9800;
+}
+
+button.edit:hover {
+    background-color: #f57c00;
+}
+
+.time-slot.current-booking {
+    background: linear-gradient(135deg, #2196F3, #03A9F4);
+    color: white;
+    font-weight: 600;
+}
+
+.time-slot.current-booking::after {
+    content: "🔄";
+    position: absolute;
+    right: 8px;
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background-color: var(--cancel-color);
+    color: white;
+    border-radius: 50%;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: all 0.3s ease;
+}
+
+.modal-close-btn:hover {
+    background-color: var(--cancel-hover);
+    transform: scale(1.1);
+}
+
+
+
+@media (max-height: 700px) {
+    .modal-content {
+        max-height: 80vh;
+    }
+    
+    #edit-time-slots-container {
+        max-height: 200px;
+    }
+    
+    #edit-car-image {
+        max-height: 150px;
+    }
+}
+
+/* Для очень маленьких экранов */
+@media (max-height: 500px) {
+    .modal-content {
+        padding: 10px;
+    }
+    
+    .modal-car-info {
+        margin-bottom: 10px;
+    }
+    
+    #edit-time-slots-container {
+        max-height: 150px;
+    }
+}
+
+    @media (max-width: 480px) {
+        .time-slots {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+</head>
+<body>
+<div style="text-align: right; margin-bottom: 15px;">
+    <button id="theme-toggle" style="width: auto; padding: 8px 12px; font-size: 14px;">🌙 Тёмная тема</button>
+</div>
+
+<h2>Доступные машины</h2>
+<div id="cars-container"></div>
+
+<h2>Мои бронирования</h2>
+<div id="bookings-container"></div>
+
+<div id="edit-modal" class="modal">
+    <div class="modal-content">
+        <!-- <span class="close-btn">&times; Закрыть</span> -->
+        <h2>Изменение бронирования</h2>
+        
+        <div class="modal-car-info">
+            <img id="edit-car-image" src="" alt="">
+            <h3 id="edit-car-model"></h3>
+            <p id="edit-car-description"></p>
+        </div>
+        
+        <div class="form-group">
+            <label for="edit-car-select">Выберите машину:</label>
+            <select id="edit-car-select" class="form-control" onchange="updateCarInfo()"></select>
+        </div>
+        
+        <div class="form-group">
+            <label for="edit-booking-date">Дата бронирования:</label>
+            <input type="date" id="edit-booking-date" class="form-control">
+        </div>
+        
+        <h3>Доступные слоты:</h3>
+        <div id="edit-time-slots-container" class="time-slots"></div>
+        
+        <button id="save-changes-btn" class="btn-primary">Сохранить изменения</button>
+    </div>
+</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+
+    const user = tg.initDataUnsafe.user;
+    const userName = user ? user.first_name : "Гость";
+    const userId = user ? user.id : 123456789;
+
+    // Фиксированные временные слоты (каждый час с 8:00 до 21:00)
+    const TIME_SLOTS = [
+        '08:00 - 09:00',
+        '09:00 - 10:00',
+        '10:00 - 11:00',
+        '11:00 - 12:00',
+        '12:00 - 13:00',
+        '13:00 - 14:00',
+        '14:00 - 15:00',
+        '15:00 - 16:00',
+        '16:00 - 17:00',
+        '17:00 - 18:00',
+        '18:00 - 19:00',
+        '19:00 - 20:00',
+        '20:00 - 21:00'
+    ];
+
+    function getCars() {
+        fetch("http://127.0.0.1:8000/cars")
+            .then(res => res.json())
+            .then(data => {
+                const container = document.getElementById("cars-container");
+                container.innerHTML = "";
+
+                data.cars.forEach(car => {
+                    const card = document.createElement("div");
+                    card.className = "card";
+                    card.style.animationDelay = `${car.id * 0.1}s`;
+
+                    card.innerHTML = `
+                        <h3>${car.model}</h3>
+                        <img src="${car.photo_url}" alt="${car.model}">
+                        <p>${car.description}</p>
+                        <label for="booking-date-${car.id}">Дата бронирования:</label>
+                        <input type="date" id="booking-date-${car.id}">
+                        <div class="time-slots" id="time-slots-${car.id}"></div>
+                        <button onclick="bookCar(${car.id})" id="book-btn-${car.id}" disabled>
+                            Забронировать
+                        </button>
+                    `;
+
+                    container.appendChild(card);
+
+                    // Установка сегодняшней даты по умолчанию
+                    const dateInput = document.getElementById(`booking-date-${car.id}`);
+                    const today = new Date().toISOString().split('T')[0];
+                    dateInput.value = today;
+                    // dateInput.min = today;
+
+                    // Загрузка слотов при изменении даты
+                    dateInput.addEventListener('change', () => loadTimeSlots(car.id));
+                    
+                    // Инициализация слотов
+                    loadTimeSlots(car.id);
+                });
+            });
+    }
+
+function loadTimeSlots(carId) {
+    const dateInput = document.getElementById(`booking-date-${carId}`);
+    const date = dateInput.value;
+    const slotsContainer = document.getElementById(`time-slots-${carId}`);
+    slotsContainer.innerHTML = "";
+
+    // Проверка выходных и праздников
+    const dateObj = new Date(date);
+    const dayOfWeek = dateObj.getDay();
+    const HOLIDAYS = [
+"2025-01-01",
+"2025-01-02",
+"2025-01-03", 
+"2025-01-04", 
+"2025-01-06", 
+"2025-01-07",
+"2025-01-08", 
+"2025-03-08", 
+"2025-05-01",
+"2025-05-02",
+"2025-05-03",
+"2025-05-08",
+"2025-05-09",
+"2025-05-10",
+"2025-06-12",
+"2025-06-13",
+"2025-06-14",
+"2025-11-03",
+"2025-11-04",
+"2025-12-31"
+];
+    const isHoliday = HOLIDAYS.includes(date) || dayOfWeek === 0;
+
+    if (isHoliday) {
+        const holidayName = getHolidayName(date, dayOfWeek);
+        const holidayBlock = document.createElement("div");
+        holidayBlock.className = "time-slot holiday-day";
+        holidayBlock.style.gridColumn = "1 / -1";
+        holidayBlock.style.padding = "15px";
+        holidayBlock.textContent = `🚫 ${holidayName} — бронь недоступна`;
+        holidayBlock.title = "Бронирование не производится в выходные и праздничные дни";
+        slotsContainer.appendChild(holidayBlock);
+        document.getElementById(`book-btn-${carId}`).disabled = true;
+        return;
+    }
+
+    // Генерация слотов для субботы
+    if (dayOfWeek === 6) { // Суббота
+        slotsForDay = TIME_SLOTS.filter(slot => {
+            const [start] = slot.split(' - ');
+            return start >= '10:00' && start < '18:00' && slot !== '12:00 - 13:00';
+        });
+        
+        const saturdayInfo = document.createElement("div");
+        saturdayInfo.className = "time-slot saturday-short-day";
+        saturdayInfo.style.gridColumn = "1 / -1";
+        saturdayInfo.textContent = "⏳ Суббота — короткий день (10:00-18:00, без обеда)";
+        saturdayInfo.title = "В субботу автошкола работает по сокращённому графику";
+        slotsContainer.appendChild(saturdayInfo);
+    } else {
+        slotsForDay = TIME_SLOTS;
+    }
+
+    // Загрузка занятых слотов
+    fetch(`http://127.0.0.1:8000/car_bookings?car_id=${carId}&date=${date}`)
+        .then(res => res.json())
+        .then(busySlots => {
+            slotsForDay.forEach(slot => {
+                const [startTime, endTime] = slot.split(' - ');
+                const isBusy = busySlots.some(busy => 
+                    busy.booking_start_time <= startTime && 
+                    busy.booking_end_time >= endTime
+                );
+                const isLunchBreak = slot === '12:00 - 13:00' && dayOfWeek !== 6;
+
+                const slotElement = document.createElement("div");
+                slotElement.className = `time-slot ${
+                    isLunchBreak ? 'lunch-break' : 
+                    isBusy ? 'unavailable' : 'available'
+                }`;
+                slotElement.textContent = slot;
+
+                // Подсказки
+                if (isLunchBreak) {
+                    slotElement.title = "🍴 Обеденный перерыв (12:00-13:00)";
+                } else if (isBusy) {
+                    slotElement.title = "⛔ Время уже занято";
+                } else {
+                    slotElement.title = "✅ Доступно для брони";
+                }
+
+                // Клик только для доступных слотов
+                if (!isBusy && !isLunchBreak) {
+                    slotElement.addEventListener('click', () => {
+                        document.querySelectorAll(`#time-slots-${carId} .time-slot`).forEach(s => {
+                            s.classList.remove('selected');
+                        });
+                        slotElement.classList.add('selected');
+                        document.getElementById(`book-btn-${carId}`).disabled = false;
+                    });
+                }
+
+                slotsContainer.appendChild(slotElement);
+            });
+        });
+}
+
+
+let currentEditingBooking = null;
+
+// Функция открытия модального окна
+function openEditModal(carId, date, startTime, endTime, model, description, photoUrl) {
+    currentEditingBooking = { carId, date, startTime, endTime };
+    
+    const modal = document.getElementById("edit-modal");
+    const carImage = document.getElementById("edit-car-image");
+    const carModel = document.getElementById("edit-car-model");
+    const carDescription = document.getElementById("edit-car-description");
+    
+    // Заполняем информацию о текущей машине
+    carImage.src = photoUrl;
+    carModel.textContent = model;
+    carDescription.textContent = description;
+    
+    // Загружаем список машин в выпадающий список
+    fetch("http://127.0.0.1:8000/cars")
+        .then(res => res.json())
+        .then(data => {
+            const select = document.getElementById("edit-car-select");
+            select.innerHTML = "";
+            
+            data.cars.forEach(car => {
+                const option = document.createElement("option");
+                option.value = car.id;
+                option.textContent = car.model;
+                option.selected = car.id === carId;
+                select.appendChild(option);
+            });
+        });
+    
+    // Устанавливаем дату
+    document.getElementById("edit-booking-date").value = date;
+    
+    // Загружаем временные слоты
+    document.getElementById("edit-booking-date").addEventListener("change", function() {
+        loadEditTimeSlots(carId, this.value);
+    });
+    
+    // Инициализация слотов
+    loadEditTimeSlots(carId, date, startTime);
+    
+    // Кнопка сохранения
+    document.getElementById("save-changes-btn").onclick = saveChanges;
+    
+    // Улучшенная реализация кнопки закрытия
+    const closeButton = document.createElement("button");
+    closeButton.className = "modal-close-btn";
+    closeButton.innerHTML = "&times;";
+    closeButton.title = "Закрыть";
+    closeButton.onclick = function() {
+        modal.style.display = "none";
+    };
+    
+    // Добавляем кнопку в modal-content
+    const modalContent = document.querySelector(".modal-content");
+    // Сначала удаляем старую кнопку, если есть
+    const oldCloseBtn = document.querySelector(".modal-close-btn");
+    if (oldCloseBtn) oldCloseBtn.remove();
+    // Добавляем новую кнопку в начало контента
+    modalContent.insertBefore(closeButton, modalContent.firstChild);
+    
+    // Закрытие по клику вне окна
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    };
+    
+    // Закрытие по ESC
+    document.onkeydown = function(e) {
+        if (e.key === "Escape") {
+            modal.style.display = "none";
+        }
+    };
+    
+    modal.style.display = "block";
+    
+    // Автофокус на кнопке закрытия для доступности
+    closeButton.focus();
+}
+
+// Функция загрузки временных слотов для редактирования
+// function loadEditTimeSlots(carId, date, selectedStartTime = null) {
+//     const slotsContainer = document.getElementById("edit-time-slots-container");
+//     slotsContainer.innerHTML = "";
+    
+//     fetch(`http://127.0.0.1:8000/car_bookings?car_id=${carId}&date=${date}`)
+//         .then(res => res.json())
+//         .then(busySlots => {
+//             const slotsForDay = getAvailableSlotsForDate(date);
+            
+//             slotsForDay.forEach(slot => {
+//                 const [startTime, endTime] = slot.split(' - ');
+//                 const isBusy = busySlots.some(busy => 
+//                     busy.booking_start_time <= startTime && 
+//                     busy.booking_end_time >= endTime &&
+//                     !(currentEditingBooking.startTime === startTime && 
+//                       currentEditingBooking.endTime === endTime)
+//                 );
+                
+//                 const slotElement = document.createElement("div");
+//                 slotElement.className = `time-slot ${isBusy ? 'unavailable' : 'available'}`;
+//                 slotElement.textContent = slot;
+                
+//                 if (!isBusy) {
+//                     slotElement.addEventListener('click', () => {
+//                         document.querySelectorAll('#edit-time-slots-container .time-slot').forEach(s => {
+//                             s.classList.remove('selected');
+//                         });
+//                         slotElement.classList.add('selected');
+//                     });
+                    
+//                     // Выделяем текущий выбранный слот
+//                     if (startTime === selectedStartTime) {
+//                         slotElement.classList.add('selected');
+//                     }
+//                 } else {
+//                     slotElement.title = "⛔ Время уже занято";
+//                 }
+                
+//                 slotsContainer.appendChild(slotElement);
+//             });
+//         });
+// }
+
+let HOLIDAYS = [];
+fetch('http://127.0.0.1:8000/holidays')
+  .then(res => res.json())
+  .then(data => {
+    HOLIDAYS = data;
+  });
+
+
+function loadEditTimeSlots(carId, date, selectedStartTime = null) {
+    const slotsContainer = document.getElementById("edit-time-slots-container");
+    slotsContainer.innerHTML = "Загрузка слотов...";
+    
+    // Проверка на выходные и праздники
+    const dateObj = new Date(date);
+    const dayOfWeek = dateObj.getDay();
+    const isHoliday = HOLIDAYS.includes(date) || dayOfWeek === 0;
+
+    if (isHoliday) {
+        const holidayName = getHolidayName(date, dayOfWeek);
+        slotsContainer.innerHTML = `<div class="time-slot holiday-day">🚫 ${holidayName} — бронь недоступна</div>`;
+        return;
+    }
+
+    // Получаем слоты для дня (с учетом субботы)
+    let slotsForDay = TIME_SLOTS;
+    if (dayOfWeek === 6) { // Суббота
+        slotsForDay = TIME_SLOTS.filter(slot => {
+            const [start] = slot.split(' - ');
+            return start >= '10:00' && start < '18:00' && slot !== '12:00 - 13:00';
+        });
+        
+        const saturdayInfo = document.createElement("div");
+        saturdayInfo.className = "time-slot saturday-short-day";
+        saturdayInfo.style.gridColumn = "1 / -1";
+        saturdayInfo.textContent = "⏳ Суббота — короткий день (10:00-18:00, без обеда)";
+        slotsContainer.appendChild(saturdayInfo);
+    }
+
+    // Загружаем занятые слоты
+    fetch(`http://127.0.0.1:8000/car_bookings?car_id=${carId}&date=${date}`)
+        .then(res => res.json())
+        .then(busySlots => {
+            slotsContainer.innerHTML = dayOfWeek === 6 ? saturdayInfo.outerHTML : "";
+            
+            slotsForDay.forEach(slot => {
+                const [startTime, endTime] = slot.split(' - ');
+                
+                // Исключаем текущее редактируемое бронирование из занятых слотов
+                const isBusy = busySlots.some(busy => 
+                    busy.booking_start_time <= startTime && 
+                    busy.booking_end_time >= endTime &&
+                    !(busy.booking_start_time === currentEditingBooking.startTime && 
+                      busy.booking_end_time === currentEditingBooking.endTime)
+                );
+                
+                const isLunchBreak = slot === '12:00 - 13:00' && dayOfWeek !== 6;
+                const isCurrentSlot = startTime === currentEditingBooking.startTime && 
+                                    endTime === currentEditingBooking.endTime;
+                
+                const slotElement = document.createElement("div");
+                slotElement.className = `time-slot ${
+                    isLunchBreak ? 'lunch-break' : 
+                    isBusy ? 'unavailable' : 
+                    isCurrentSlot ? 'current-booking' : 'available'
+                }`;
+                slotElement.textContent = slot;
+                
+                if (isLunchBreak) {
+                    slotElement.title = "🍴 Обеденный перерыв (12:00-13:00)";
+                } else if (isBusy) {
+                    slotElement.title = "⛔ Время уже занято";
+                } else if (isCurrentSlot) {
+                    slotElement.title = "🔄 Ваше текущее бронирование";
+                } else {
+                    slotElement.title = "✅ Доступно для брони";
+                    slotElement.addEventListener('click', () => {
+                        document.querySelectorAll('#edit-time-slots-container .time-slot').forEach(s => {
+                            s.classList.remove('selected');
+                        });
+                        slotElement.classList.add('selected');
+                    });
+                    
+                    // Выделяем текущий выбранный слот
+                    if (startTime === selectedStartTime) {
+                        slotElement.classList.add('selected');
+                    }
+                }
+                
+                slotsContainer.appendChild(slotElement);
+            });
+        })
+        .catch(err => {
+            slotsContainer.innerHTML = `<div class="error">Ошибка загрузки слотов</div>`;
+            console.error("Ошибка загрузки слотов:", err);
+        });
+}
+// Функция обновления информации о машине при выборе
+function updateCarInfo() {
+    const carId = document.getElementById("edit-car-select").value;
+    const date = document.getElementById("edit-booking-date").value;
+    
+    fetch("http://127.0.0.1:8000/cars")
+        .then(res => res.json())
+        .then(data => {
+            const car = data.cars.find(c => c.id == carId);
+            if (car) {
+                document.getElementById("edit-car-image").src = car.photo_url;
+                document.getElementById("edit-car-model").textContent = car.model;
+                document.getElementById("edit-car-description").textContent = car.description;
+                
+                // Обновляем слоты для новой машины
+                loadEditTimeSlots(carId, date);
+            }
+        });
+}
+
+// Функция сохранения изменений
+function saveChanges() {
+    const modal = document.getElementById("edit-modal");
+    const newCarId = document.getElementById("edit-car-select").value;
+    const newDate = document.getElementById("edit-booking-date").value;
+    const selectedSlot = document.querySelector('#edit-time-slots-container .selected');
+    
+    if (!selectedSlot) {
+        alert("Пожалуйста, выберите временной слот");
+        return;
+    }
+    
+    const [newStartTime, newEndTime] = selectedSlot.textContent.split(' - ');
+    const saveBtn = document.getElementById("save-changes-btn");
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Сохранение...";
+    
+    // Создаем специальный endpoint для изменения брони
+    fetch("http://127.0.0.1:8000/update_booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            old_car_id: currentEditingBooking.carId,
+            old_date: currentEditingBooking.date,
+            old_start_time: currentEditingBooking.startTime,
+            old_end_time: currentEditingBooking.endTime,
+            new_car_id: newCarId,
+            new_date: newDate,
+            new_start_time: newStartTime.trim(),
+            new_end_time: newEndTime.trim(),
+            user_id: userId,
+            user_name: userName
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert("Бронирование успешно обновлено!");
+        modal.style.display = "none";
+        getCars();
+        getBookings();
+    })
+    .catch(err => {
+        alert("Ошибка при изменении бронирования: " + (err.detail || err.message));
+    })
+    .finally(() => {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Сохранить изменения";
+    });
+}
+// function saveChanges() {
+//     const modal = document.getElementById("edit-modal");
+//     const newCarId = document.getElementById("edit-car-select").value;
+//     const newDate = document.getElementById("edit-booking-date").value;
+//     const selectedSlot = document.querySelector('#edit-time-slots-container .selected');
+    
+//     if (!selectedSlot) {
+//         alert("Пожалуйста, выберите временной слот");
+//         return;
+//     }
+    
+//     const [newStartTime, newEndTime] = selectedSlot.textContent.split(' - ');
+    
+//     // Сначала отменяем старое бронирование
+//     fetch("http://127.0.0.1:8000/cancel_booking", {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({
+//             car_id: currentEditingBooking.carId,
+//             user_name: userName,
+//             user_id: userId,
+//             booking_date: currentEditingBooking.date,
+//             booking_start_time: currentEditingBooking.startTime,
+//             booking_end_time: currentEditingBooking.endTime
+//         })
+//     })
+//     .then(res => res.json())
+//     .then(() => {
+//         // Затем создаем новое бронирование
+//         return fetch("http://127.0.0.1:8000/choose_car", {
+//             method: "POST",
+//             headers: { "Content-Type": "application/json" },
+//             body: JSON.stringify({
+//                 car_id: newCarId,
+//                 user_name: userName,
+//                 user_id: userId,
+//                 booking_date: newDate,
+//                 booking_start_time: newStartTime.trim(),
+//                 booking_end_time: newEndTime.trim()
+//             })
+//         });
+//     })
+//     .then(res => res.json())
+//     .then(data => {
+//         alert(data.message);
+//         modal.style.display = "none";
+//         getCars();
+//         getBookings();
+//     })
+//     .catch(err => {
+//         alert("Ошибка при изменении бронирования: " + (err.detail || JSON.stringify(err)));
+//     });
+// }
+
+// Вспомогательная функция для получения доступных слотов
+function getAvailableSlotsForDate(date) {
+    const dateObj = new Date(date);
+    const dayOfWeek = dateObj.getDay();
+    
+    if (dayOfWeek === 0 || HOLIDAYS.includes(date)) {
+        return [];
+    } else if (dayOfWeek === 6) {
+        return TIME_SLOTS.filter(slot => {
+            const [start] = slot.split(' - ');
+            return start >= '10:00' && start < '18:00' && slot !== '12:00 - 13:00';
+        });
+    } else {
+        return TIME_SLOTS;
+    }
+}
+
+
+
+// Вспомогательная функция для получения названия выходного дня
+function getHolidayName(date, dayOfWeek) {
+    if (dayOfWeek === 0) return "Воскресенье";
+    const holidayNames = {
+        "2025-01-01": "Новогодние каникулы",
+        "2025-01-02": "Новогодние каникулы",
+        "2025-01-03": "Новогодние каникулы",
+        "2025-01-04": "Новогодние каникулы",
+        "2025-01-06": "Новогодние каникулы",
+        "2025-01-07": "Новогодние каникулы",
+        "2025-01-08": "Новогодние каникулы",
+        "2025-03-08": "Международный женский день", 
+        "2025-05-01": "День труда",
+        "2025-05-09": "День Победы",
+        "2025-06-12": "День России",
+        "2025-11-04": "День народного единства",
+        "2025-12-31": "Новый Год",
+    };
+    return holidayNames[date] || "Праздничный день";
+}
+
+
+
+    function bookCar(carId) {
+    const date = document.getElementById(`booking-date-${carId}`).value;
+    const selectedSlot = document.querySelector(`#time-slots-${carId} .selected`);
+    
+    if (!selectedSlot) {
+        alert("Пожалуйста, выберите временной слот");
+        return;
+    }
+    
+    const [startTime, endTime] = selectedSlot.textContent.split(' - ');
+
+    fetch("http://127.0.0.1:8000/choose_car", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            car_id: carId,
+            user_name: userName,
+            user_id: userId,
+            booking_date: date,
+            booking_start_time: startTime.trim(), // Добавьте .trim() на случай пробелов
+            booking_end_time: endTime.trim()
+        })
+    })
+    .then(res => {
+        if (!res.ok) {
+            return res.json().then(err => { throw err; }); // Читаем JSON ошибки
+        }
+        return res.json();
+    })
+    .then(data => {
+        alert(data.message);
+        getCars();
+        getBookings();
+    })
+    .catch(err => {
+        alert(err.detail || "Ошибка бронирования: " + JSON.stringify(err));
+    });
+}
+
+// Функция для экранирования спецсимволов в строках
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+    function getBookings() {
+        fetch(`http://127.0.0.1:8000/my_bookings?user_id=${userId}`)
+            .then(res => res.json())
+            .then(data => {
+                const container = document.getElementById("bookings-container");
+                container.innerHTML = "";
+
+                if (data.status === "success" && data.bookings.length > 0) {
+                    data.bookings.forEach(booking => {
+                        const card = document.createElement("div");
+                        card.className = "card";
+card.innerHTML = `
+    <h3>${booking.model}</h3>
+    <img src="${booking.photo_url}" alt="${booking.model}">
+    <p>${booking.description}</p>
+    <p><strong>Дата:</strong> ${booking.booking_date}</p>
+    <p><strong>Время:</strong> ${booking.booking_start_time} - ${booking.booking_end_time}</p>
+    <div class="buttons-container">
+        <button class="edit" onclick="openEditModal(${booking.car_id}, '${booking.booking_date}', '${booking.booking_start_time}', '${booking.booking_end_time}', '${escapeHtml(booking.model)}', '${escapeHtml(booking.description)}', '${booking.photo_url}')">
+            Изменить
+        </button>
+        <button class="cancel" onclick="cancelBooking(${booking.car_id}, '${booking.booking_date}', '${booking.booking_start_time}', '${booking.booking_end_time}')">
+            Отменить
+        </button>
+    </div>
+`;
+                        container.appendChild(card);
+                    });
+                } else {
+                    container.innerHTML = "<p>У вас нет активных бронирований</p>";
+                }
+            });
+    }
+
+    function cancelBooking(carId, date, startTime, endTime) {
+        if (!confirm("Вы уверены, что хотите отменить бронирование?")) return;
+        
+        fetch("http://127.0.0.1:8000/cancel_booking", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                car_id: carId,
+                user_name: userName,
+                user_id: userId,
+                booking_date: date,
+                booking_start_time: startTime,
+                booking_end_time: endTime
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            getCars();
+            getBookings();
+        });
+    }
+
+    // Тема
+    const toggleButton = document.getElementById('theme-toggle');
+    const root = document.documentElement;
+
+    function setTheme(light) {
+        if (light) {
+            root.classList.add('light');
+            toggleButton.textContent = '🌙 Тёмная тема';
+        } else {
+            root.classList.remove('light');
+            toggleButton.textContent = '☀️ Светлая тема';
+        }
+    }
+
+    const saved = localStorage.getItem('theme');
+    const isLight = saved === 'light';
+    setTheme(isLight);
+
+    toggleButton.addEventListener('click', () => {
+        const currentlyLight = root.classList.contains('light');
+        setTheme(!currentlyLight);
+        localStorage.setItem('theme', !currentlyLight ? 'light' : 'dark');
+    });
+
+    // Инициализация
+    document.addEventListener("DOMContentLoaded", () => {
+        getCars();
+        getBookings();
+    });
+</script>
+</body>
+</html>

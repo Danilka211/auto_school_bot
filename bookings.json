@@ -1,0 +1,13 @@
+[
+    {
+        "car_id": 3,
+        "user_name": "Гость",
+        "user_id": 123456789,
+        "booking_date": "2025-05-22",
+        "booking_start_time": "14:00",
+        "booking_end_time": "15:00",
+        "model": "Volkswagen Polo",
+        "description": "Немецкое качество. Устойчив на дороге и прост в обслуживании.",
+        "photo_url": "http://127.0.0.1:8000/static/polo.webp"
+    }
+]
